@@ -45,29 +45,24 @@ def chunked(text, size=MAX_LEN):
 
 import re
 
-# emoji + symbol/pictograph/dingbat blocks -- admins commonly prefix channels
-# like "🚨-alerts" or "📢alerts"; strip these so the literal name still matches
-_EMOJI_RE = re.compile(
-    "["
-    "\U0001F300-\U0001FAFF"  # symbols & pictographs, emoticons, transport, supplemental
-    "\U00002600-\U000027BF"  # misc symbols, dingbats
-    "\U0001F1E6-\U0001F1FF"  # regional indicators (flag emoji)
-    "\U00002190-\U000021FF"  # arrows (occasionally used decoratively)
-    "\U0000FE0F"             # variation selector-16 (emoji presentation)
-    "\U0000200D"             # zero-width joiner (multi-part emoji)
-    "]+"
-)
+# keep only what's actually meaningful in a channel name -- letters, numbers,
+# dashes. Discord channel names admins decorate with all kinds of separators
+# ("🥇┃alerts", "🚨-alerts", "» alerts «"), and trying to denylist every emoji
+# and box-drawing/bullet/pipe character individually is a losing game. Instead
+# strip everything that ISN'T alphanumeric-or-dash and collapse what's left.
+_NON_CORE_RE = re.compile(r"[^a-z0-9-]+")
+_MULTI_DASH_RE = re.compile(r"-+")
 
 
 def normalize_channel_name(name):
-    """Discord auto-formats channel names (spaces -> dashes, lowercase), and
-    admins often prefix them with an emoji ("🚨-alerts"). The env var someone
-    pastes into Railway won't always match that formatting exactly, so both
-    sides get normalized the same way before comparing: emoji stripped,
-    whitespace trimmed, spaces -> dashes, lowercased. Stray leading/trailing
-    dashes left behind by a removed emoji are trimmed too."""
-    stripped = _EMOJI_RE.sub("", name)
-    return stripped.strip().lower().replace(" ", "-").strip("-")
+    """Both the env var and every real channel name get run through this
+    before comparing, so decorative prefixes/separators (emoji, box-drawing
+    characters, bullets, pipes -- whatever an admin used) don't block a match
+    on the actual text."""
+    lowered = name.strip().lower().replace(" ", "-")
+    core_only = _NON_CORE_RE.sub("-", lowered)   # any decorative char -> dash
+    collapsed = _MULTI_DASH_RE.sub("-", core_only)  # "🥇┃" -> multiple dashes -> one
+    return collapsed.strip("-")
 
 
 def find_target(guild, target_name):
