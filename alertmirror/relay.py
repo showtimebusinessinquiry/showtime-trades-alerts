@@ -43,9 +43,38 @@ def chunked(text, size=MAX_LEN):
     return pieces
 
 
+import re
+
+# emoji + symbol/pictograph/dingbat blocks -- admins commonly prefix channels
+# like "🚨-alerts" or "📢alerts"; strip these so the literal name still matches
+_EMOJI_RE = re.compile(
+    "["
+    "\U0001F300-\U0001FAFF"  # symbols & pictographs, emoticons, transport, supplemental
+    "\U00002600-\U000027BF"  # misc symbols, dingbats
+    "\U0001F1E6-\U0001F1FF"  # regional indicators (flag emoji)
+    "\U00002190-\U000021FF"  # arrows (occasionally used decoratively)
+    "\U0000FE0F"             # variation selector-16 (emoji presentation)
+    "\U0000200D"             # zero-width joiner (multi-part emoji)
+    "]+"
+)
+
+
+def normalize_channel_name(name):
+    """Discord auto-formats channel names (spaces -> dashes, lowercase), and
+    admins often prefix them with an emoji ("🚨-alerts"). The env var someone
+    pastes into Railway won't always match that formatting exactly, so both
+    sides get normalized the same way before comparing: emoji stripped,
+    whitespace trimmed, spaces -> dashes, lowercased. Stray leading/trailing
+    dashes left behind by a removed emoji are trimmed too."""
+    stripped = _EMOJI_RE.sub("", name)
+    return stripped.strip().lower().replace(" ", "-").strip("-")
+
+
 def find_target(guild, target_name):
     """This guild's receiving channel, or None if it's missing or unwritable."""
-    ch = discord.utils.get(guild.text_channels, name=target_name)
+    wanted = normalize_channel_name(target_name)
+    ch = next((c for c in guild.text_channels
+               if normalize_channel_name(c.name) == wanted), None)
     return ch if ch and ch.permissions_for(guild.me).send_messages else None
 
 
