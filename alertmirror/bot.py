@@ -75,7 +75,10 @@ def main():
                 await msg.channel.send(piece)
             return
         async with lock:  # two quick alerts must not race each other out of order
-            delivered, failed = await mirror(msg, client.guilds, cfg.target_name, cfg.ping_role_name)
+            delivered, failed = await mirror(
+                msg, client.guilds, cfg.target_name, cfg.ping_role_name, cfg.use_embeds,
+                author=cfg.embed_author, icon_url=cfg.embed_icon_url,
+                color=cfg.embed_color, footer=cfg.embed_footer)
         if delivered:
             stats["mirrored"] += 1
         if failed:
