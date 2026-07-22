@@ -78,7 +78,7 @@ def main():
             delivered, failed = await mirror(
                 msg, client.guilds, cfg.target_name, cfg.ping_role_name, cfg.use_embeds,
                 author=cfg.embed_author, icon_url=cfg.embed_icon_url,
-                color=cfg.embed_color, footer=cfg.embed_footer)
+                color=cfg.embed_color, footer=cfg.embed_footer, disclaimer_url=cfg.embed_disclaimer_url)
         if delivered:
             stats["mirrored"] += 1
         if failed:

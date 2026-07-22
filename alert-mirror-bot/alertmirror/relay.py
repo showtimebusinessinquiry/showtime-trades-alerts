@@ -87,7 +87,7 @@ def find_role(guild, role_name):
 
 
 def build_embeds(text, image_filename=None, *, author="", icon_url="",
-                 color=EMBED_COLOR, footer="", timestamp=None):
+                 color=EMBED_COLOR, footer="", timestamp=None, disclaimer_url=""):
     """Turn one alert into its embed card(s).
 
     The first line becomes a bold title when there's more text after it (so a
@@ -114,11 +114,15 @@ def build_embeds(text, image_filename=None, *, author="", icon_url="",
                 # only pass one that's actually a URL -- else just drop the icon
                 safe_icon = icon_url if icon_url.startswith(("http://", "https://")) else None
                 embed.set_author(name=author, icon_url=safe_icon)
-        if i == len(pieces) - 1:  # image + footer close out the last one
+        if i == len(pieces) - 1:  # image + footer + disclaimer close out the last one
             if image_filename:
                 embed.set_image(url=f"attachment://{image_filename}")
             if footer:
                 embed.set_footer(text=footer)
+            if disclaimer_url:
+                # append disclaimer as a line above the footer
+                current_desc = embed.description or ""
+                embed.description = f"{current_desc}\n\n{disclaimer_url}" if current_desc else disclaimer_url
             if timestamp is not None:
                 embed.timestamp = timestamp
         embeds.append(embed)
@@ -142,7 +146,7 @@ async def read_attachments(msg):
 
 
 async def mirror(msg, guilds, target_name, ping_role_name, use_embeds=False, *,
-                 author="", icon_url="", color=EMBED_COLOR, footer=""):
+                 author="", icon_url="", color=EMBED_COLOR, footer="", disclaimer_url=""):
     """Fan one message out to every other guild. Returns (delivered, failed)
     guild lists -- one guild failing doesn't block the rest.
 
@@ -166,6 +170,9 @@ async def mirror(msg, guilds, target_name, ping_role_name, use_embeds=False, *,
         ping = role.mention if role else ""
         # ping stays out of the body in embed mode -- it rides in plain content to notify
         body = build_message(text, fallback_urls, "" if use_embeds else ping)
+        # in embed mode, strip any typed mention of the role from the start so it doesn't clutter the title
+        if use_embeds and role and body.startswith(f"{role.name} "):
+            body = body[len(f"{role.name} "):].lstrip()
         if not (body or uploads):
             continue
         mentions = discord.AllowedMentions(
@@ -177,7 +184,7 @@ async def mirror(msg, guilds, target_name, ping_role_name, use_embeds=False, *,
                 embeds = build_embeds(
                     body, files[0].filename if files else None,
                     author=author, icon_url=icon_url, color=color, footer=footer,
-                    timestamp=getattr(msg, "created_at", None))
+                    timestamp=getattr(msg, "created_at", None), disclaimer_url=disclaimer_url)
                 # one embed per message -- keeps every send under Discord's
                 # per-message limits (<=10 embeds AND <=6000 chars total) no
                 # matter how long the alert, so a big alert never fails wholesale

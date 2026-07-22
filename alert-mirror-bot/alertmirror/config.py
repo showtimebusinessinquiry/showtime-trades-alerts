@@ -40,3 +40,4 @@ class Config:
         self.embed_icon_url = os.environ.get("EMBED_ICON_URL", "").strip()  # small logo by the name
         self.embed_footer = os.environ.get("EMBED_FOOTER", "").strip()      # footer line
         self.embed_color = _parse_color(os.environ.get("EMBED_COLOR", ""))  # accent bar color
+        self.embed_disclaimer_url = os.environ.get("EMBED_DISCLAIMER_URL", "").strip()  # legal link appended to last embed
